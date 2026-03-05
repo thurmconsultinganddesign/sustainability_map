@@ -21,8 +21,8 @@ export default function FilterBar({
 }: FilterBarProps) {
   /** Get unique values for a given filter field, sorted */
   function getOptions(field: FilterField): string[] {
-    const values = new Set(programs.map((p) => p[field]).filter(Boolean));
-    return [...values].sort();
+    const values = Array.from(new Set(programs.map((p) => p[field]).filter(Boolean)));
+    return values.sort();
   }
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
