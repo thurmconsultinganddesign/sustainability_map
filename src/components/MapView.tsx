@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
-import { Program, FilterField } from "@/types/location";
+import { Program, FilterField, fieldMatches } from "@/types/location";
 
 // Fix Leaflet default icon issue with Next.js/webpack
 const defaultIcon = L.icon({
@@ -20,27 +26,40 @@ const defaultIcon = L.icon({
 L.Marker.prototype.options.icon = defaultIcon;
 
 /** Pin icon — a colored teardrop marker */
-function createPinIcon() {
-  return L.divIcon({
-    className: "custom-marker",
-    html: `<div style="
-      background-color: #166534;
-      width: 26px;
-      height: 26px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 3px solid white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    "></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    popupAnchor: [0, -26],
-  });
-}
+const pinIcon = L.divIcon({
+  className: "custom-marker",
+  html: `<div style="
+    background-color: #166534;
+    width: 26px;
+    height: 26px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  "></div>`,
+  iconSize: [26, 26],
+  iconAnchor: [13, 26],
+  popupAnchor: [0, -26],
+});
 
-const pinIcon = createPinIcon();
+/** Active (selected) pin icon — darker/highlighted */
+const activePinIcon = L.divIcon({
+  className: "custom-marker",
+  html: `<div style="
+    background-color: #111;
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+  "></div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30],
+});
 
-/** Auto-fit map bounds to show all markers */
+/** Auto-fit map bounds to show all markers. */
 function FitBounds({ programs }: { programs: Program[] }) {
   const map = useMap();
 
@@ -49,9 +68,74 @@ function FitBounds({ programs }: { programs: Program[] }) {
     const bounds = L.latLngBounds(
       programs.map((p) => [p.latitude, p.longitude])
     );
-    map.fitBounds(bounds, { padding: [50, 50] });
+
+    const isMobile = window.innerWidth <= 640;
+    if (isMobile) {
+      map.fitBounds(bounds, {
+        padding: [20, 20],
+        maxZoom: 4,
+        animate: false,
+      });
+      const currentZoom = map.getZoom();
+      if (currentZoom < 2) {
+        map.setZoom(2, { animate: false });
+      }
+    } else {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
   }, [programs, map]);
 
+  return null;
+}
+
+/**
+ * Fly to a selected program with smart offset so the marker
+ * ends up in the visible portion of the map (not behind the drawer).
+ *
+ * Desktop: drawer is 400px on the right → offset marker to left half
+ * Mobile: drawer covers bottom ~60% → offset marker to upper portion
+ */
+function FlyToSelected({ program }: { program: Program | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!program) return;
+
+    const targetLatLng = L.latLng(program.latitude, program.longitude);
+    const isMobile = window.innerWidth <= 640;
+    const DRAWER_WIDTH = 400; // px, desktop drawer width
+    const zoom = 8;
+
+    if (isMobile) {
+      // Offset the target upward so the marker sits in the visible top ~40%
+      // of the viewport (bottom 60% is covered by the drawer)
+      const mapHeight = map.getSize().y;
+      const drawerHeight = mapHeight * 0.55;
+      const targetPoint = map.project(targetLatLng, zoom);
+      // Move the target up by half the drawer height so it centers in the visible area
+      targetPoint.y += drawerHeight / 2;
+      const offsetLatLng = map.unproject(targetPoint, zoom);
+      map.flyTo(offsetLatLng, zoom, { duration: 0.8 });
+    } else {
+      // Offset the target to the left so the marker sits in the visible area
+      // (right side is covered by the 400px drawer)
+      const targetPoint = map.project(targetLatLng, zoom);
+      targetPoint.x += DRAWER_WIDTH / 2;
+      const offsetLatLng = map.unproject(targetPoint, zoom);
+      map.flyTo(offsetLatLng, zoom, { duration: 0.8 });
+    }
+  }, [program, map]);
+
+  return null;
+}
+
+/** Close drawer when user clicks empty map area */
+function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
+  useMapEvents({
+    click: () => {
+      onMapClick();
+    },
+  });
   return null;
 }
 
@@ -60,6 +144,9 @@ interface MapViewProps {
   filters: Record<FilterField, string | null>;
   searchQuery: string;
   isEmbed?: boolean;
+  selectedProgram?: Program | null;
+  onMarkerClick?: (program: Program) => void;
+  onMapClick?: () => void;
 }
 
 export default function MapView({
@@ -67,6 +154,9 @@ export default function MapView({
   filters,
   searchQuery,
   isEmbed = false,
+  selectedProgram = null,
+  onMarkerClick,
+  onMapClick,
 }: MapViewProps) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -76,11 +166,10 @@ export default function MapView({
 
   const filteredPrograms = useMemo(() => {
     return programs.filter((p) => {
-      // Check all active filters
       for (const [field, value] of Object.entries(filters)) {
-        if (value && p[field as FilterField] !== value) return false;
+        if (value && !fieldMatches(p, field as FilterField, value))
+          return false;
       }
-      // Check search query across all text fields
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const searchable = [
@@ -101,6 +190,10 @@ export default function MapView({
     });
   }, [programs, filters, searchQuery]);
 
+  const handleMapClick = useCallback(() => {
+    if (onMapClick) onMapClick();
+  }, [onMapClick]);
+
   if (!isMounted) {
     return (
       <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -109,88 +202,47 @@ export default function MapView({
     );
   }
 
+  const selectedKey = selectedProgram
+    ? `${selectedProgram.institution}-${selectedProgram.program}`
+    : null;
+
   return (
     <MapContainer
       center={[30, 0]}
       zoom={2}
-      className="w-full h-full"
+      className={`w-full h-full ${isEmbed ? "embed-map" : ""}`}
       zoomControl={!isEmbed}
     >
-      {/* Watercolor base layer */}
       <TileLayer
         url={`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`}
       />
-      {/* Borders and major roads overlay */}
       <TileLayer
         url={`https://tiles.stadiamaps.com/tiles/stamen_toner_lines/{z}/{x}/{y}{r}.png?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`}
         opacity={0.3}
       />
-      {/* Labels overlay — country names, cities on transparent background */}
       <TileLayer
         attribution='Map tiles by <a href="https://stamen.com">Stamen Design</a>, hosted by <a href="https://stadiamaps.com">Stadia Maps</a>. Data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url={`https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`}
       />
       <FitBounds programs={filteredPrograms} />
-      {filteredPrograms.map((program, index) => (
-        <Marker
-          key={`${program.institution}-${program.program}-${index}`}
-          position={[program.latitude, program.longitude]}
-          icon={pinIcon}
-        >
-          <Popup maxWidth={320} minWidth={240}>
-            <div className="p-1">
-              <h3 className="font-bold text-sm leading-tight mb-0.5">
-                {program.program}
-              </h3>
-              <p className="text-xs text-gray-500 mb-2">
-                {program.institution}
-              </p>
-
-              <div className="flex flex-wrap gap-1 mb-2">
-                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-                  {program.level}
-                </span>
-                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                  {program.discipline}
-                </span>
-              </div>
-
-              <div className="text-xs text-gray-600 space-y-0.5">
-                <p>
-                  <span className="font-medium">Focus:</span> {program.focus}
-                </p>
-                <p>
-                  <span className="font-medium">Location:</span> {program.city},{" "}
-                  {program.country}
-                </p>
-                {program.language && (
-                  <p>
-                    <span className="font-medium">Language:</span>{" "}
-                    {program.language}
-                  </p>
-                )}
-                {program.duration && (
-                  <p>
-                    <span className="font-medium">Duration:</span>{" "}
-                    {program.duration}
-                  </p>
-                )}
-              </div>
-
-              {program.url && (
-                <a
-                  href={program.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline mt-2 inline-block font-medium"
-                >
-                  View program →
-                </a>
-              )}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      <FlyToSelected program={selectedProgram} />
+      <MapClickHandler onMapClick={handleMapClick} />
+      {filteredPrograms.map((program, index) => {
+        const key = `${program.institution}-${program.program}`;
+        const isSelected = key === selectedKey;
+        return (
+          <Marker
+            key={`${key}-${index}`}
+            position={[program.latitude, program.longitude]}
+            icon={isSelected ? activePinIcon : pinIcon}
+            eventHandlers={{
+              click: () => {
+                if (onMarkerClick) onMarkerClick(program);
+              },
+            }}
+          />
+        );
+      })}
     </MapContainer>
   );
 }

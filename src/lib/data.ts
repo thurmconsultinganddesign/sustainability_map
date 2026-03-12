@@ -55,6 +55,7 @@ function parseCSV(csvText: string): Program[] {
       const language = clean(row["language"]);
       const duration = clean(row["duration"]);
       const url = clean(row["url"]);
+      const description = clean(row["description"]);
 
       // Skip rows with no institution or program
       if (!institution || !program) return null;
@@ -79,6 +80,7 @@ function parseCSV(csvText: string): Program[] {
         language,
         duration,
         url,
+        description,
         latitude: coords[0],
         longitude: coords[1],
       } as Program;
@@ -100,6 +102,7 @@ function getSampleData(): Program[] {
       language: "English",
       duration: "12 months",
       url: "",
+      description: "",
       latitude: 45.4642,
       longitude: 9.19,
     },
@@ -114,6 +117,7 @@ function getSampleData(): Program[] {
       language: "English",
       duration: "2 years",
       url: "",
+      description: "",
       latitude: 51.5074,
       longitude: -0.1278,
     },
@@ -128,6 +132,7 @@ function getSampleData(): Program[] {
       language: "English",
       duration: "2 years",
       url: "",
+      description: "",
       latitude: 52.0116,
       longitude: 4.3571,
     },
@@ -142,6 +147,7 @@ function getSampleData(): Program[] {
       language: "English",
       duration: "2 years",
       url: "",
+      description: "",
       latitude: 42.3736,
       longitude: -71.1097,
     },
@@ -156,6 +162,7 @@ function getSampleData(): Program[] {
       language: "English",
       duration: "2 years",
       url: "",
+      description: "",
       latitude: 60.1699,
       longitude: 24.9384,
     },
