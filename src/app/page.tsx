@@ -6,6 +6,7 @@ import { Program, FilterField, FILTER_FIELDS, fieldMatches } from "@/types/locat
 import { fetchPrograms } from "@/lib/data";
 import SearchFilterBar from "@/components/SearchFilterBar";
 import ProgramDrawer from "@/components/ProgramDrawer";
+import SubmitProgramDrawer from "@/components/SubmitProgramDrawer";
 
 // Dynamic import to avoid SSR issues with Leaflet
 const MapView = dynamic(() => import("@/components/MapView"), {
@@ -34,9 +35,16 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
 
   const handleProgramSelect = useCallback((program: Program) => {
     setSelectedProgram(program);
+    setIsSubmitOpen(false); // close submit drawer if open
+  }, []);
+
+  const handleSubmitOpen = useCallback(() => {
+    setIsSubmitOpen(true);
+    setSelectedProgram(null); // close detail drawer if open
   }, []);
 
   const handleDrawerClose = useCallback(() => {
@@ -117,10 +125,29 @@ export default function HomePage() {
         onProgramSelect={handleProgramSelect}
       />
 
+      {/* + Suggest button (top right) */}
+      <button
+        className="suggest-btn"
+        onClick={handleSubmitOpen}
+        aria-label="Suggest a program"
+        title="Suggest a program"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+
       {/* Program detail drawer */}
       <ProgramDrawer
         program={selectedProgram}
         onClose={handleDrawerClose}
+      />
+
+      {/* Submit program drawer */}
+      <SubmitProgramDrawer
+        isOpen={isSubmitOpen}
+        onClose={() => setIsSubmitOpen(false)}
+        programs={programs}
       />
     </div>
   );

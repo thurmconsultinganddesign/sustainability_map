@@ -69,11 +69,15 @@ function FitBounds({ programs }: { programs: Program[] }) {
       programs.map((p) => [p.latitude, p.longitude])
     );
 
+    // Cap zoom so we never go deeper than city level
+    // (locations are approximate — street-level zoom is misleading)
+    const MAX_CITY_ZOOM = 11;
+
     const isMobile = window.innerWidth <= 640;
     if (isMobile) {
       map.fitBounds(bounds, {
         padding: [20, 20],
-        maxZoom: 4,
+        maxZoom: Math.min(4, MAX_CITY_ZOOM),
         animate: false,
       });
       const currentZoom = map.getZoom();
@@ -81,7 +85,10 @@ function FitBounds({ programs }: { programs: Program[] }) {
         map.setZoom(2, { animate: false });
       }
     } else {
-      map.fitBounds(bounds, { padding: [50, 50] });
+      map.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: MAX_CITY_ZOOM,
+      });
     }
   }, [programs, map]);
 
