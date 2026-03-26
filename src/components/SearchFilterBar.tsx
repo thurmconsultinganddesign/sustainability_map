@@ -371,9 +371,13 @@ export default function SearchFilterBar({
                   <select
                     key={key}
                     value={filters[key] || ""}
-                    onChange={(e) =>
-                      onFilterChange(key, e.target.value || null)
-                    }
+                    onChange={(e) => {
+                      onFilterChange(key, e.target.value || null);
+                      // Auto-close filter panel on mobile after selecting a value
+                      if (e.target.value && window.innerWidth <= 850) {
+                        setIsOpen(false);
+                      }
+                    }}
                     className={`filter-select ${isActive ? "active" : ""}`}
                   >
                     <option value="">{label}</option>
