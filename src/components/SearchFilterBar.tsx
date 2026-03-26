@@ -107,6 +107,7 @@ interface SearchFilterBarProps {
   onSearchChange: (query: string) => void;
   resultCount: number;
   onProgramSelect?: (program: Program) => void;
+  onFiltersOpen?: () => void;
 }
 
 export default function SearchFilterBar({
@@ -117,6 +118,7 @@ export default function SearchFilterBar({
   onSearchChange,
   resultCount,
   onProgramSelect,
+  onFiltersOpen,
 }: SearchFilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -189,6 +191,7 @@ export default function SearchFilterBar({
   function openWithFocus(_field?: FilterField) {
     setIsOpen(true);
     setShowSuggestions(false);
+    onFiltersOpen?.();
   }
 
   function handleSelectProgram(program: Program) {
@@ -334,7 +337,6 @@ export default function SearchFilterBar({
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="search-pill-input"
-              autoFocus
             />
             <span className="filter-panel-count">
               {resultCount} result{resultCount !== 1 ? "s" : ""}

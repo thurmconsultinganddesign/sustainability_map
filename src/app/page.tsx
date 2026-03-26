@@ -123,6 +123,10 @@ export default function HomePage() {
         onSearchChange={setSearchQuery}
         resultCount={filteredCount}
         onProgramSelect={handleProgramSelect}
+        onFiltersOpen={() => {
+          setSelectedProgram(null);
+          setIsSubmitOpen(false);
+        }}
       />
 
       {/* + Suggest button (top right) */}
