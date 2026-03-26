@@ -30,7 +30,7 @@ export async function fetchPrograms(): Promise<Program[]> {
  * Parses CSV text into Program objects.
  * Handles the quirks in the real data (extra quotes, missing fields, duplicates).
  */
-function parseCSV(csvText: string): Program[] {
+async function parseCSV(csvText: string): Promise<Program[]> {
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
@@ -38,24 +38,16 @@ function parseCSV(csvText: string): Program[] {
   });
 
   const seen = new Set<string>();
+  const clean = (val: string | undefined) =>
+    (val || "").replace(/^"+|"+$/g, "").trim();
 
-  return parsed.data
+  // Build rows first (sync), then geocode all in parallel
+  const rows = parsed.data
     .map((row) => {
-      // Clean up values — remove stray quotes from badly formatted rows
-      const clean = (val: string | undefined) =>
-        (val || "").replace(/^"+|"+$/g, "").trim();
-
       const institution = clean(row["institution"]);
       const program = clean(row["program"]);
       const country = clean(row["country"]);
       const city = clean(row["city"]);
-      const level = clean(row["level"]);
-      const discipline = clean(row["discipline"]);
-      const focus = clean(row["focus"]);
-      const language = clean(row["language"]);
-      const duration = clean(row["duration"]);
-      const url = clean(row["url"]);
-      const description = clean(row["description"]);
 
       // Skip rows with no institution or program
       if (!institution || !program) return null;
@@ -65,27 +57,36 @@ function parseCSV(csvText: string): Program[] {
       if (seen.has(dedupeKey)) return null;
       seen.add(dedupeKey);
 
-      // Geocode city + country to get coordinates
-      const coords = geocodeCity(city, country);
-      if (!coords) return null;
-
       return {
         institution,
         program,
         country,
         city,
-        level,
-        discipline,
-        focus,
-        language,
-        duration,
-        url,
-        description,
+        level: clean(row["level"]),
+        discipline: clean(row["discipline"]),
+        focus: clean(row["focus"]),
+        language: clean(row["language"]),
+        duration: clean(row["duration"]),
+        url: clean(row["url"]),
+        description: clean(row["description"]),
+      };
+    })
+    .filter((r) => r !== null);
+
+  // Geocode all rows in parallel (API has cache, hardcoded lookups are instant)
+  const programs = await Promise.all(
+    rows.map(async (row) => {
+      const coords = await geocodeCity(row.city, row.country);
+      if (!coords) return null;
+      return {
+        ...row,
         latitude: coords[0],
         longitude: coords[1],
       } as Program;
     })
-    .filter((p): p is Program => p !== null);
+  );
+
+  return programs.filter((p): p is Program => p !== null);
 }
 
 /** Sample data for development when no Google Sheet is connected */

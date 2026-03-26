@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Program, FilterField, getUniqueOptions } from "@/types/location";
 
 /* ──────────────────────────────────────────────
@@ -148,7 +148,7 @@ function TagInput({ label, placeholder, tags, onChange, existingOptions }: TagIn
    Main Component
    ────────────────────────────────────────────── */
 
-const LEVEL_OPTIONS = ["Bachelor", "Master", "Diploma", "PhD"];
+const LEVEL_OPTIONS = ["Bachelor", "Master", "Postgraduate", "PhD", "Diploma", "Certificate", "Course", "Research Lab"];
 
 interface SubmitProgramDrawerProps {
   isOpen: boolean;
@@ -159,7 +159,34 @@ interface SubmitProgramDrawerProps {
 type FormState = "idle" | "submitting" | "success" | "error";
 
 export default function SubmitProgramDrawer({ isOpen, onClose, programs }: SubmitProgramDrawerProps) {
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+  const submitDrawerRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const scrollEl = submitDrawerRef.current?.querySelector(".drawer-scroll");
+    if (scrollEl && scrollEl.scrollTop > 0) return;
+    dragStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const diff = e.touches[0].clientY - dragStartY.current;
+    if (diff > 0) {
+      setDragOffset(diff);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (dragOffset > 100) {
+      onClose();
+    }
+    setDragOffset(0);
+    dragStartY.current = null;
+  }, [dragOffset, onClose]);
+
   const [formState, setFormState] = useState<FormState>("idle");
+  const [submitterName, setSubmitterName] = useState("");
   const [institution, setInstitution] = useState("");
   const [programName, setProgramName] = useState("");
   const [country, setCountry] = useState("");
@@ -183,6 +210,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
   );
 
   function resetForm() {
+    setSubmitterName("");
     setInstitution("");
     setProgramName("");
     setCountry("");
@@ -212,6 +240,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
         access_key: process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "",
         subject: `New program suggestion: ${programName} at ${institution}`,
         from_name: "Sustainability Map",
+        "Submitted by": submitterName,
         Institution: institution,
         Program: programName,
         Country: country,
@@ -246,7 +275,15 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
 
   return (
     <div className="submit-drawer-overlay" onClick={handleClose}>
-      <div className="submit-drawer" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={submitDrawerRef}
+        className="submit-drawer"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: 'none' } : undefined}
+      >
         {/* Top bar */}
         <div className="drawer-top-bar">
           <span className="drawer-top-label">Suggest a Program</span>
@@ -280,6 +317,19 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
               <p className="submit-intro">
                 Know a sustainability program that&apos;s missing from the map? Let us know and we&apos;ll add it.
               </p>
+
+              {/* Submitter name */}
+              <div className="submit-field">
+                <label className="submit-label">Your name *</label>
+                <input
+                  type="text"
+                  required
+                  value={submitterName}
+                  onChange={(e) => setSubmitterName(e.target.value)}
+                  className="submit-input"
+                  placeholder="e.g. Jane Doe"
+                />
+              </div>
 
               {/* Institution */}
               <div className="submit-field">

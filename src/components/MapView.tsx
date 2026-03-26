@@ -111,7 +111,7 @@ function FlyToSelected({ program }: { program: Program | null }) {
     const targetLatLng = L.latLng(program.latitude, program.longitude);
     const isMobile = window.innerWidth <= 640;
     const DRAWER_WIDTH = 400; // px, desktop drawer width
-    const zoom = 8;
+    const zoom = 5;
 
     if (isMobile) {
       // Offset the target upward so the marker sits in the visible top ~40%

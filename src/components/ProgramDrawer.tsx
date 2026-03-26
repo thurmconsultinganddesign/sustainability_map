@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useCallback } from "react";
 import { Program } from "@/types/location";
 
 interface ProgramDrawerProps {
@@ -8,14 +9,46 @@ interface ProgramDrawerProps {
 }
 
 export default function ProgramDrawer({ program, onClose }: ProgramDrawerProps) {
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only enable swipe when scrollable content is at the top
+    const scrollEl = drawerRef.current?.querySelector(".drawer-scroll");
+    if (scrollEl && scrollEl.scrollTop > 0) return;
+    dragStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const diff = e.touches[0].clientY - dragStartY.current;
+    if (diff > 0) {
+      setDragOffset(diff);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (dragOffset > 100) {
+      onClose();
+    }
+    setDragOffset(0);
+    dragStartY.current = null;
+  }, [dragOffset, onClose]);
+
   if (!program) return null;
 
   return (
     <div className={`program-drawer-overlay`} onClick={onClose}>
       {/* Desktop: right side drawer */}
       <div
+        ref={drawerRef}
         className="program-drawer"
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: 'none' } : undefined}
       >
         {/* Top bar */}
         <div className="drawer-top-bar">

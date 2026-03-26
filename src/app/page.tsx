@@ -135,6 +135,7 @@ export default function HomePage() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <path d="M12 5v14M5 12h14" />
         </svg>
+        <span className="suggest-btn-label">Contribute</span>
       </button>
 
       {/* Program detail drawer */}

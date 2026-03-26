@@ -459,7 +459,7 @@ html, body, #__next {
    Responsive — Mobile
    ====================================================== */
 
-@media (max-width: 640px) {
+@media (max-width: 850px) {
   .search-filter-wrapper {
     top: 16px;
     width: calc(100% - 84px); /* room for + button + gap on mobile */
@@ -757,32 +757,43 @@ html, body, #__next {
   top: 24px;
   right: 24px;
   z-index: 1000;
-  width: 46px;
   height: 46px;
-  border-radius: 50%;
+  padding: 0 18px 0 14px;
+  border-radius: 23px;
   background: white;
   border: none;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.13);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   cursor: pointer;
   color: #666;
   transition: color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
+.suggest-btn-label {
+  font-size: 13px;
+  color: #888;
+}
+
 .suggest-btn:hover {
   color: #222;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
-  transform: scale(1.05);
+  transform: scale(1.02);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 850px) {
   .suggest-btn {
     top: 16px;
     right: 16px;
     width: 40px;
     height: 40px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .suggest-btn-label {
+    display: none;
   }
 }
 
@@ -794,7 +805,7 @@ html, body, #__next {
   position: fixed;
   inset: 0;
   z-index: 1100;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* Desktop: right side drawer (same pattern as program drawer) */

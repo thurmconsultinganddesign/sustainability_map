@@ -1,7 +1,8 @@
 /**
  * City → lat/lng lookup table.
- * This avoids needing a geocoding API. We map "City, Country" to coordinates.
- * New cities are added as the dataset grows.
+ * This avoids needing a geocoding API for known cities.
+ * Unknown cities fall back to the Nominatim (OpenStreetMap) API.
+ * New cities are added here as the dataset grows for faster lookups.
  */
 const CITY_COORDS: Record<string, [number, number]> = {
   // Italy
@@ -53,16 +54,32 @@ const CITY_COORDS: Record<string, [number, number]> = {
 
   // Ireland
   "dublin, ireland": [53.3498, -6.2603],
+
+  // Lithuania
+  "kaunas, lithuania": [54.8985, 23.9036],
+
+  // South Africa
+  "capetown, south africa": [-33.9249, 18.4241],
+  "cape town, south africa": [-33.9249, 18.4241],
+
+  // Switzerland
+  "lucerne, switzerland": [47.0502, 8.3093],
 };
 
 /**
+ * In-memory cache for API lookups so we don't re-fetch the same city.
+ */
+const apiCache: Record<string, [number, number] | null> = {};
+
+/**
  * Look up coordinates for a city + country combination.
+ * First checks the hardcoded table, then falls back to the Nominatim API.
  * Returns [latitude, longitude] or null if not found.
  */
-export function geocodeCity(
+export async function geocodeCity(
   city: string,
   country: string
-): [number, number] | null {
+): Promise<[number, number] | null> {
   // Clean up the inputs
   const cleanCity = city.replace(/"/g, "").trim();
   const cleanCountry = country.replace(/"/g, "").trim();
@@ -76,6 +93,44 @@ export function geocodeCity(
     if (coordKey.startsWith(cleanCity.toLowerCase() + ",")) return coords;
   }
 
-  console.warn(`No coordinates found for: ${cleanCity}, ${cleanCountry}`);
-  return null;
+  // Check API cache
+  if (key in apiCache) return apiCache[key];
+
+  // Fall back to Nominatim (OpenStreetMap) geocoding API
+  try {
+    const query = encodeURIComponent(`${cleanCity}, ${cleanCountry}`);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      {
+        headers: {
+          "User-Agent": "SustainabilityMap/1.0",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Nominatim API error for: ${cleanCity}, ${cleanCountry}`);
+      apiCache[key] = null;
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      const coords: [number, number] = [
+        parseFloat(data[0].lat),
+        parseFloat(data[0].lon),
+      ];
+      apiCache[key] = coords;
+      console.log(`Geocoded via API: ${cleanCity}, ${cleanCountry} → [${coords}]`);
+      return coords;
+    }
+
+    console.warn(`No results from Nominatim for: ${cleanCity}, ${cleanCountry}`);
+    apiCache[key] = null;
+    return null;
+  } catch (error) {
+    console.warn(`Geocoding failed for: ${cleanCity}, ${cleanCountry}`, error);
+    apiCache[key] = null;
+    return null;
+  }
 }

@@ -352,7 +352,18 @@ export default function SearchFilterBar({
           <div className="filter-panel-body">
             <div className="filter-grid">
               {FILTER_FIELDS.map(({ key, label }) => {
-                const options = getUniqueOptions(programs, key);
+                // Conditional filtering: country ↔ city dependency
+                let sourcePrograms = programs;
+                if (key === "city" && filters.country) {
+                  sourcePrograms = programs.filter(
+                    (p) => p.country === filters.country
+                  );
+                } else if (key === "country" && filters.city) {
+                  sourcePrograms = programs.filter(
+                    (p) => p.city === filters.city
+                  );
+                }
+                const options = getUniqueOptions(sourcePrograms, key);
                 const isActive = filters[key] !== null;
                 return (
                   <select
