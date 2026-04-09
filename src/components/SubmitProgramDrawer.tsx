@@ -238,7 +238,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
     try {
       const formData = {
         access_key: process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "",
-        subject: `New program suggestion: ${programName} at ${institution}`,
+        subject: `New programme suggestion: ${programName} at ${institution}`,
         from_name: "Sustainability Map",
         "Submitted by": submitterName,
         Institution: institution,
@@ -286,7 +286,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
       >
         {/* Top bar */}
         <div className="drawer-top-bar">
-          <span className="drawer-top-label">Suggest a Program</span>
+          <span className="drawer-top-label">Suggest a Programme</span>
           <button className="drawer-close-btn" onClick={handleClose} aria-label="Close">
             <CloseIcon />
           </button>
@@ -315,7 +315,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
           ) : (
             <form onSubmit={handleSubmit}>
               <p className="submit-intro">
-                Know a sustainability program that&apos;s missing from the map? Let us know and we&apos;ll add it.
+                Know a sustainability programme that&apos;s missing from the map? Let us know and we&apos;ll add it.
               </p>
 
               {/* Submitter name */}
@@ -346,7 +346,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
 
               {/* Program name */}
               <div className="submit-field">
-                <label className="submit-label">Program name *</label>
+                <label className="submit-label">Programme name *</label>
                 <input
                   type="text"
                   required
@@ -386,9 +386,8 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
               {/* Level + Duration row */}
               <div className="submit-row">
                 <div className="submit-field">
-                  <label className="submit-label">Level *</label>
+                  <label className="submit-label">Level</label>
                   <select
-                    required
                     value={level}
                     onChange={(e) => setLevel(e.target.value)}
                     className={`submit-select ${!level ? "placeholder" : ""}`}
@@ -443,9 +442,10 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
 
               {/* URL */}
               <div className="submit-field">
-                <label className="submit-label">Program URL</label>
+                <label className="submit-label">Programme URL *</label>
                 <input
                   type="url"
+                  required
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://..."
@@ -459,7 +459,7 @@ export default function SubmitProgramDrawer({ isOpen, onClose, programs }: Submi
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of the program (optional)"
+                  placeholder="Brief description of the programme (optional)"
                   className="submit-textarea"
                   rows={3}
                 />

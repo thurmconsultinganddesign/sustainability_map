@@ -27,23 +27,24 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 export default function EmbedPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Record<FilterField, string | null>>({
-    country: null, city: null, level: null,
-    discipline: null, focus: null, language: null, duration: null,
+  const [filters, setFilters] = useState<Record<FilterField, string[]>>({
+    country: [], city: [], level: [],
+    discipline: [], focus: [], language: [], duration: [],
   });
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const toArr = (v: string | null) => v ? [v] : [];
 
     setFilters({
-      country: params.get("country"),
-      city: params.get("city"),
-      level: params.get("level"),
-      discipline: params.get("discipline"),
-      focus: params.get("focus"),
-      language: params.get("language"),
-      duration: params.get("duration"),
+      country: toArr(params.get("country")),
+      city: toArr(params.get("city")),
+      level: toArr(params.get("level")),
+      discipline: toArr(params.get("discipline")),
+      focus: toArr(params.get("focus")),
+      language: toArr(params.get("language")),
+      duration: toArr(params.get("duration")),
     });
     setSearch(params.get("search") || "");
 

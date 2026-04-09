@@ -6,7 +6,7 @@ import {
   FilterField,
   FILTER_FIELDS,
   getUniqueOptions,
-  fieldMatches,
+  fieldMatchesMulti,
 } from "@/types/location";
 
 /* ──────────────────────────────────────────────
@@ -14,17 +14,7 @@ import {
    ────────────────────────────────────────────── */
 function SearchIcon({ className = "" }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.35-4.35" />
     </svg>
@@ -33,17 +23,7 @@ function SearchIcon({ className = "" }: { className?: string }) {
 
 function FilterIcon({ className = "" }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="4" y1="6" x2="20" y2="6" />
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="18" x2="20" y2="18" />
@@ -56,16 +36,7 @@ function FilterIcon({ className = "" }: { className?: string }) {
 
 function CloseIcon() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 6L6 18M6 6l12 12" />
     </svg>
   );
@@ -73,18 +44,17 @@ function CloseIcon() {
 
 function LocationIcon() {
   return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
@@ -94,39 +64,57 @@ function LocationIcon() {
    ────────────────────────────────────────────── */
 
 /** Top hint categories shown inline on desktop */
-const HINT_FIELDS = FILTER_FIELDS.slice(0, 2); // Country, Level
+const HINT_FIELDS = FILTER_FIELDS.slice(0, 2); // Country, City
 const REMAINING_COUNT = FILTER_FIELDS.length - HINT_FIELDS.length;
 
 const MAX_SUGGESTIONS = 6;
 
+export type ViewMode = "map" | "list";
+
 interface SearchFilterBarProps {
   programs: Program[];
-  filters: Record<FilterField, string | null>;
-  onFilterChange: (field: FilterField, value: string | null) => void;
+  filters: Record<FilterField, string[]>;
+  onFiltersApply: (filters: Record<FilterField, string[]>) => void;
+  onFilterRemove: (field: FilterField, value: string) => void;
+  onFiltersClearAll: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   resultCount: number;
   onProgramSelect?: (program: Program) => void;
   onFiltersOpen?: () => void;
+  isListMode?: boolean;
 }
 
 export default function SearchFilterBar({
   programs,
   filters,
-  onFilterChange,
+  onFiltersApply,
+  onFilterRemove,
+  onFiltersClearAll,
   searchQuery,
   onSearchChange,
   resultCount,
   onProgramSelect,
   onFiltersOpen,
+  isListMode = false,
 }: SearchFilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [openField, setOpenField] = useState<FilterField | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Staged filter selections (local to panel, applied on "Apply")
+  const [staged, setStaged] = useState<Record<FilterField, string[]>>(filters);
+
+  // Sync staged filters when panel opens or applied filters change externally
+  useEffect(() => {
+    setStaged(filters);
+    setOpenField(null);
+  }, [filters, isOpen]);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -134,8 +122,7 @@ export default function SearchFilterBar({
       const target = e.target as Node;
       if (panelRef.current && panelRef.current.contains(target)) return;
       if (barRef.current && barRef.current.contains(target)) return;
-      if (suggestionsRef.current && suggestionsRef.current.contains(target))
-        return;
+      if (suggestionsRef.current && suggestionsRef.current.contains(target)) return;
       setIsOpen(false);
       setShowSuggestions(false);
     }
@@ -143,10 +130,18 @@ export default function SearchFilterBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const activeFilters = Object.entries(filters).filter(
-    ([, value]) => value !== null
-  ) as [FilterField, string][];
-  const activeCount = activeFilters.length;
+  // Flat list of all active filter chips: [field, value]
+  const activeChips: [FilterField, string][] = [];
+  for (const { key } of FILTER_FIELDS) {
+    for (const val of filters[key]) {
+      activeChips.push([key, val]);
+    }
+  }
+  const activeCount = activeChips.length;
+
+  // Count staged selections that differ from applied
+  const stagedCount = FILTER_FIELDS.reduce((n, { key }) => n + staged[key].length, 0);
+  const hasStagedChanges = JSON.stringify(staged) !== JSON.stringify(filters);
 
   /** Compute search suggestions — matching programs, respecting active filters */
   const suggestions = useMemo(() => {
@@ -155,24 +150,14 @@ export default function SearchFilterBar({
     const q = searchQuery.toLowerCase();
     return programs
       .filter((p) => {
-        // Respect active filters
-        for (const [field, value] of Object.entries(filters)) {
-          if (value && !fieldMatches(p, field as FilterField, value))
+        for (const [field, values] of Object.entries(filters)) {
+          if ((values as string[]).length > 0 && !fieldMatchesMulti(p, field as FilterField, values as string[]))
             return false;
         }
-        // Match search query
         const searchable = [
-          p.institution,
-          p.program,
-          p.country,
-          p.city,
-          p.level,
-          p.discipline,
-          p.focus,
-          p.language,
-        ]
-          .join(" ")
-          .toLowerCase();
+          p.institution, p.program, p.country, p.city,
+          p.level, p.discipline, p.focus, p.language,
+        ].join(" ").toLowerCase();
         return searchable.includes(q);
       })
       .slice(0, MAX_SUGGESTIONS);
@@ -184,8 +169,25 @@ export default function SearchFilterBar({
     setSelectedIndex(-1);
   }, [suggestions, searchQuery]);
 
-  function clearAll() {
-    FILTER_FIELDS.forEach((f) => onFilterChange(f.key, null));
+  function toggleStaged(field: FilterField, value: string) {
+    setStaged((prev) => {
+      const arr = prev[field];
+      const next = arr.includes(value)
+        ? arr.filter((v) => v !== value)
+        : [...arr, value];
+      return { ...prev, [field]: next };
+    });
+  }
+
+  function clearStaged() {
+    const empty: Record<FilterField, string[]> = {} as Record<FilterField, string[]>;
+    FILTER_FIELDS.forEach(({ key }) => { empty[key] = []; });
+    setStaged(empty);
+  }
+
+  function applyFilters() {
+    onFiltersApply(staged);
+    setIsOpen(false);
   }
 
   function openWithFocus(_field?: FilterField) {
@@ -206,21 +208,25 @@ export default function SearchFilterBar({
 
   /** Keyboard navigation for suggestions */
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (showSuggestions && selectedIndex >= 0) {
+        handleSelectProgram(suggestions[selectedIndex]);
+      } else {
+        setShowSuggestions(false);
+        (e.target as HTMLInputElement).blur();
+      }
+      return;
+    }
+
     if (!showSuggestions || suggestions.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((prev) =>
-        prev < suggestions.length - 1 ? prev + 1 : 0
-      );
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex((prev) =>
-        prev > 0 ? prev - 1 : suggestions.length - 1
-      );
-    } else if (e.key === "Enter" && selectedIndex >= 0) {
-      e.preventDefault();
-      handleSelectProgram(suggestions[selectedIndex]);
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
     }
@@ -234,16 +240,14 @@ export default function SearchFilterBar({
     return (
       <>
         {text.slice(0, idx)}
-        <strong className="search-highlight">
-          {text.slice(idx, idx + searchQuery.length)}
-        </strong>
+        <strong className="search-highlight">{text.slice(idx, idx + searchQuery.length)}</strong>
         {text.slice(idx + searchQuery.length)}
       </>
     );
   }
 
   return (
-    <div className="search-filter-wrapper">
+    <div className={`search-filter-wrapper ${isListMode ? "list-mode" : ""}`}>
       {/* ─── Collapsed pill ─── */}
       {!isOpen && (
         <div ref={barRef} className="search-pill">
@@ -251,7 +255,7 @@ export default function SearchFilterBar({
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search programs..."
+            placeholder="Search programmes..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={() => {
@@ -266,18 +270,11 @@ export default function SearchFilterBar({
           <div className="search-pill-hints">
             <span className="search-pill-divider">|</span>
             {HINT_FIELDS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => openWithFocus(key)}
-                className="search-pill-hint"
-              >
+              <button key={key} onClick={() => openWithFocus(key)} className="search-pill-hint">
                 {label}
               </button>
             ))}
-            <button
-              onClick={() => openWithFocus()}
-              className="search-pill-hint"
-            >
+            <button onClick={() => openWithFocus()} className="search-pill-hint">
               +{REMAINING_COUNT} more
             </button>
           </div>
@@ -310,9 +307,7 @@ export default function SearchFilterBar({
                 <LocationIcon />
               </div>
               <div className="search-suggestion-text">
-                <span className="search-suggestion-name">
-                  {highlightMatch(program.program)}
-                </span>
+                <span className="search-suggestion-name">{highlightMatch(program.program)}</span>
                 <span className="search-suggestion-meta">
                   {program.institution} · {program.city}, {program.country}
                 </span>
@@ -333,84 +328,98 @@ export default function SearchFilterBar({
             <SearchIcon className="search-pill-icon" />
             <input
               type="text"
-              placeholder="Search programs..."
+              placeholder="Search programmes..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="search-pill-input"
             />
-            <span className="filter-panel-count">
-              {resultCount} result{resultCount !== 1 ? "s" : ""}
-            </span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="filter-panel-close"
-              aria-label="Close filters"
-            >
+            <button onClick={() => setIsOpen(false)} className="filter-panel-close" aria-label="Close filters">
               <CloseIcon />
             </button>
           </div>
 
-          {/* Filter dropdowns */}
+          {/* Filter dropdown pills */}
           <div className="filter-panel-body">
-            <div className="filter-grid">
+            <div className="filter-pills-row">
               {FILTER_FIELDS.map(({ key, label }) => {
-                // Conditional filtering: country ↔ city dependency
-                let sourcePrograms = programs;
-                if (key === "city" && filters.country) {
-                  sourcePrograms = programs.filter(
-                    (p) => p.country === filters.country
-                  );
-                } else if (key === "country" && filters.city) {
-                  sourcePrograms = programs.filter(
-                    (p) => p.city === filters.city
-                  );
-                }
-                const options = getUniqueOptions(sourcePrograms, key);
-                const isActive = filters[key] !== null;
+                const count = staged[key].length;
+                const isFieldOpen = openField === key;
                 return (
-                  <select
+                  <button
                     key={key}
-                    value={filters[key] || ""}
-                    onChange={(e) => {
-                      onFilterChange(key, e.target.value || null);
-                      // Auto-close filter panel on mobile after selecting a value
-                      if (e.target.value && window.innerWidth <= 850) {
-                        setIsOpen(false);
-                      }
-                    }}
-                    className={`filter-select ${isActive ? "active" : ""}`}
+                    type="button"
+                    className={`filter-pill ${count > 0 ? "has-selections" : ""} ${isFieldOpen ? "open" : ""}`}
+                    onClick={() => setOpenField(isFieldOpen ? null : key)}
                   >
-                    <option value="">{label}</option>
-                    {options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                    {label}{count > 0 && <span className="filter-pill-count">{count}</span>}
+                    <svg className={`filter-pill-chevron ${isFieldOpen ? "open" : ""}`} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
                 );
               })}
             </div>
 
-            {/* Active chips inside panel */}
-            {activeCount > 0 && (
-              <div className="filter-panel-chips">
-                {activeFilters.map(([field, value]) => (
-                  <span key={field} className="filter-chip">
-                    {value}
+            {/* Expanded checkbox dropdown for the open field */}
+            {openField && (
+              <div className="filter-dropdown">
+                {getUniqueOptions(programs, openField).map((opt) => {
+                  const isChecked = staged[openField].includes(opt);
+                  return (
                     <button
-                      onClick={() => onFilterChange(field, null)}
-                      className="filter-chip-x"
-                      aria-label={`Remove ${value} filter`}
+                      key={opt}
+                      type="button"
+                      className={`filter-checkbox-row ${isChecked ? "checked" : ""}`}
+                      onClick={() => toggleStaged(openField, opt)}
                     >
-                      ✕
+                      <span className={`filter-checkbox ${isChecked ? "checked" : ""}`}>
+                        {isChecked && <CheckIcon />}
+                      </span>
+                      <span className="filter-checkbox-label">{opt}</span>
                     </button>
-                  </span>
-                ))}
-                <button onClick={clearAll} className="filter-clear-btn">
-                  Clear all
-                </button>
+                  );
+                })}
               </div>
             )}
+
+            {/* Staged chips preview */}
+            {stagedCount > 0 && (
+              <div className="filter-staged-chips">
+                {FILTER_FIELDS.map(({ key }) =>
+                  staged[key].map((val) => (
+                    <span key={`${key}-${val}`} className="filter-chip">
+                      {val}
+                      <button
+                        onClick={() => toggleStaged(key, val)}
+                        className="filter-chip-x"
+                        aria-label={`Remove ${val}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Apply / Clear footer */}
+            <div className="filter-panel-actions">
+              {(stagedCount > 0 || activeCount > 0) && (
+                <button
+                  onClick={() => { clearStaged(); onFiltersClearAll(); setIsOpen(false); }}
+                  className="filter-action-clear"
+                >
+                  Clear all
+                </button>
+              )}
+              <button
+                onClick={applyFilters}
+                className={`filter-action-apply ${hasStagedChanges ? "" : "disabled"}`}
+                disabled={!hasStagedChanges}
+              >
+                Apply{stagedCount > 0 ? ` (${stagedCount})` : ""}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -418,11 +427,11 @@ export default function SearchFilterBar({
       {/* ─── Active filter chips (always visible below the bar when collapsed) ─── */}
       {!isOpen && activeCount > 0 && !showSuggestions && (
         <div className="filter-chips-strip">
-          {activeFilters.map(([field, value]) => (
-            <span key={field} className="filter-chip">
+          {activeChips.map(([field, value]) => (
+            <span key={`${field}-${value}`} className="filter-chip">
               {value}
               <button
-                onClick={() => onFilterChange(field, null)}
+                onClick={() => onFilterRemove(field, value)}
                 className="filter-chip-x"
                 aria-label={`Remove ${value} filter`}
               >
@@ -430,7 +439,7 @@ export default function SearchFilterBar({
               </button>
             </span>
           ))}
-          <button onClick={clearAll} className="filter-clear-link">
+          <button onClick={onFiltersClearAll} className="filter-clear-link">
             Clear all
           </button>
         </div>
@@ -439,7 +448,7 @@ export default function SearchFilterBar({
       {/* ─── Result count (below everything) ─── */}
       {!isOpen && !showSuggestions && (
         <div className="search-result-count">
-          {resultCount} program{resultCount !== 1 ? "s" : ""}
+          {resultCount} programme{resultCount !== 1 ? "s" : ""}
         </div>
       )}
     </div>

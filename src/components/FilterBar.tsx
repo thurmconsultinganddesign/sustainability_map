@@ -34,7 +34,7 @@ export default function FilterBar({
         <div className="relative flex-1 max-w-sm">
           <input
             type="text"
-            placeholder="Search programs, institutions, cities..."
+            placeholder="Search programmes, institutions, cities..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -54,7 +54,7 @@ export default function FilterBar({
           </svg>
         </div>
         <span className="text-xs text-gray-400 whitespace-nowrap">
-          {resultCount} program{resultCount !== 1 ? "s" : ""}
+          {resultCount} programme{resultCount !== 1 ? "s" : ""}
         </span>
         {activeFilterCount > 0 && (
           <button

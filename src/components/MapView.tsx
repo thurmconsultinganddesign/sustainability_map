@@ -5,11 +5,12 @@ import {
   MapContainer,
   TileLayer,
   Marker,
+  AttributionControl,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import { Program, FilterField, fieldMatches } from "@/types/location";
+import { Program, FilterField, fieldMatchesMulti } from "@/types/location";
 
 // Fix Leaflet default icon issue with Next.js/webpack
 const defaultIcon = L.icon({
@@ -148,7 +149,7 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
 
 interface MapViewProps {
   programs: Program[];
-  filters: Record<FilterField, string | null>;
+  filters: Record<FilterField, string[]>;
   searchQuery: string;
   isEmbed?: boolean;
   selectedProgram?: Program | null;
@@ -173,8 +174,8 @@ export default function MapView({
 
   const filteredPrograms = useMemo(() => {
     return programs.filter((p) => {
-      for (const [field, value] of Object.entries(filters)) {
-        if (value && !fieldMatches(p, field as FilterField, value))
+      for (const [field, values] of Object.entries(filters)) {
+        if ((values as string[]).length > 0 && !fieldMatchesMulti(p, field as FilterField, values as string[]))
           return false;
       }
       if (searchQuery) {
@@ -219,7 +220,9 @@ export default function MapView({
       zoom={2}
       className={`w-full h-full ${isEmbed ? "embed-map" : ""}`}
       zoomControl={!isEmbed}
+      attributionControl={false}
     >
+      <AttributionControl position="bottomright" prefix={false} />
       <TileLayer
         url={`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`}
       />

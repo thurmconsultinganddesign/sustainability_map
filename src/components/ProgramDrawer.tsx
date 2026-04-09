@@ -52,7 +52,7 @@ export default function ProgramDrawer({ program, onClose }: ProgramDrawerProps) 
       >
         {/* Top bar */}
         <div className="drawer-top-bar">
-          <span className="drawer-top-label">Program Details</span>
+          <span className="drawer-top-label">Programme Details</span>
           <button className="drawer-close-btn" onClick={onClose} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -114,7 +114,7 @@ export default function ProgramDrawer({ program, onClose }: ProgramDrawerProps) 
               rel="noopener noreferrer"
               className="drawer-cta-primary"
             >
-              Visit program
+              Visit programme
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 17L17 7M17 7H7M17 7v10" />
               </svg>

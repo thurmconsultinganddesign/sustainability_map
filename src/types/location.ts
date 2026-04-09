@@ -69,6 +69,24 @@ export function fieldMatches(
 }
 
 /**
+ * Check if a program field matches ANY of the selected filter values (OR logic within a field).
+ * For multi-value fields (discipline, focus), checks if any tag matches any filter value.
+ */
+export function fieldMatchesMulti(
+  program: Program,
+  field: FilterField,
+  filterValues: string[]
+): boolean {
+  if (filterValues.length === 0) return true;
+  const raw = program[field];
+  if (MULTI_VALUE_FIELDS.includes(field)) {
+    const tags = splitTags(raw).map((t) => t.toLowerCase());
+    return filterValues.some((fv) => tags.includes(fv.toLowerCase()));
+  }
+  return filterValues.some((fv) => raw === fv);
+}
+
+/**
  * Get all unique filter options for a field across all programs.
  * For multi-value fields, splits each cell into individual tags.
  */
