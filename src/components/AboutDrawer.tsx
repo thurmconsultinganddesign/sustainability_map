@@ -65,8 +65,25 @@ export default function AboutDrawer({ isOpen, onClose }: AboutDrawerProps) {
           <p className="about-body">
             This map is a living dataset developed as part of{" "}
             <strong>Resilient Design Pedagogies (RDP)</strong>, a research project funded by the{" "}
-            <em>Deutsche Forschungsgemeinschaft</em> (DFG project number 544447906) and hosted at the{" "}
-            University of Applied Arts Vienna (Angewandte).
+            Deutsche Forschungsgemeinschaft (
+            <a
+              href="https://gepris.dfg.de/gepris/projekt/544447906?language=en"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="legal-link"
+            >
+              DFG project number 544447960
+            </a>
+            ) and hosted at the{" "}
+            <a
+              href="https://www.designhistorytheory.at/research/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="legal-link"
+            >
+              University of Applied Arts Vienna
+            </a>{" "}
+            (Angewandte).
           </p>
 
           <p className="about-body">
@@ -77,7 +94,7 @@ export default function AboutDrawer({ isOpen, onClose }: AboutDrawerProps) {
             It documents sustainability-focused design and architecture programmes globally.
           </p>
 
-          <p className="about-body about-body-note">
+          <p className="about-body" style={{ color: "#888" }}>
             Suggestions are reviewed against verified institutional sources before being added.
           </p>
         </div>

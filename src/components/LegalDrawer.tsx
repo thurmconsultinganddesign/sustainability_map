@@ -45,7 +45,7 @@ export default function LegalDrawer({ isOpen, onClose }: LegalDrawerProps) {
       >
         {/* Top bar */}
         <div className="drawer-top-bar">
-          <span className="drawer-top-label">Legal</span>
+          <span className="drawer-top-label">Imprint</span>
           <button className="drawer-close-btn" onClick={onClose} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -60,7 +60,7 @@ export default function LegalDrawer({ isOpen, onClose }: LegalDrawerProps) {
 
         {/* Scrollable content */}
         <div className="drawer-scroll">
-          <h2 className="drawer-program-name">Impressum</h2>
+          <h2 className="drawer-program-name">Imprint</h2>
 
           <div className="legal-section">
             <p className="about-body">
@@ -100,6 +100,24 @@ export default function LegalDrawer({ isOpen, onClose }: LegalDrawerProps) {
               . Hosted by{" "}
               <a href="https://stadiamaps.com/" target="_blank" rel="noopener noreferrer" className="legal-link">
                 Stadia Maps
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="drawer-divider" />
+
+          <div className="legal-section">
+            <h3 className="legal-heading">Design</h3>
+            <p className="about-body">
+              Design by{" "}
+              <a
+                href="https://wolframthurm.work/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="legal-link"
+              >
+                PT Thurm Consulting and Design
               </a>
               .
             </p>
