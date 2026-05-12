@@ -5,9 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sustainability Map",
+  title: "Sustainable Design Education Map",
   description:
-    "Explore sustainability initiatives and green projects on an interactive map.",
+    "Mapping resilient, regenerative, circular, and transition design programmes worldwide.",
 };
 
 export default function RootLayout({
